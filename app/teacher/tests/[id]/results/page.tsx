@@ -39,6 +39,11 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
 
   if (!allowed) notFound();
 
+  async function saveTestResultAction(formData: FormData): Promise<void> {
+    "use server";
+    await saveTestResult(formData);
+  }
+
   const { data: students } = await supabase
     .from("students")
     .select("id, student_id, roll_number, profile:profiles(name), class:classes(name), batch:batches(name)")
@@ -74,7 +79,7 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
               return (
                 <tr key={student.id}>
                   <td colSpan={7}>
-                    <form action={saveTestResult} className="inline-form" style={{ display: "grid", gridTemplateColumns: "1.8fr 0.8fr 1fr 1.4fr 0.8fr 2fr auto", gap: "0.75rem", alignItems: "center" }}>
+                    <form action={saveTestResultAction} className="inline-form" style={{ display: "grid", gridTemplateColumns: "1.8fr 0.8fr 1fr 1.4fr 0.8fr 2fr auto", gap: "0.75rem", alignItems: "center" }}>
                       <div>{student.profile?.name ?? "Student"}</div>
                       <div>{student.roll_number ?? "—"}</div>
                       <div>{student.batch?.name ?? "—"}</div>

@@ -9,6 +9,10 @@ const percentage = (obtained: number, max: number) => {
   return Number(((Number(obtained) / Number(max)) * 100).toFixed(2));
 };
 
+function firstRelation<T>(relation: T | T[] | null | undefined): T | null {
+  return (Array.isArray(relation) ? relation[0] : relation) ?? null;
+}
+
  export default async function TestResultsPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRole("ADMIN");
   const { id } = await params;
@@ -45,13 +49,21 @@ const percentage = (obtained: number, max: number) => {
     .eq("test_id", id);
 
   const resultMap = new Map((results ?? []).map((result: any) => [result.student_id, result]));
+  const testClass = firstRelation(test.class);
+  const testSubject = firstRelation(test.subject);
+  const testBatch = firstRelation(test.batch);
+
+  async function saveTestResultAction(formData: FormData): Promise<void> {
+    "use server";
+    await saveTestResult(formData);
+  }
 
   return (
     <section className="manage">
       <div className="admin-hero">
         <span>RESULTS</span>
         <h2>{test.title}</h2>
-        <p>{test.class?.name} · {test.subject?.name} · {test.batch?.name ? `Batch ${test.batch.name}` : "All batches"}</p>
+        <p>{testClass?.name} · {testSubject?.name} · {testBatch?.name ? `Batch ${testBatch.name}` : "All batches"}</p>
       </div>
 
       <div className="quick-actions" style={{ marginTop: 12 }}>
@@ -77,7 +89,7 @@ const percentage = (obtained: number, max: number) => {
               return (
                 <tr key={student.id}>
                   <td colSpan={7}>
-                    <form action={saveTestResult} className="inline-form" style={{ display: "grid", gridTemplateColumns: "1.8fr 0.8fr 1fr 1.4fr 0.8fr 2fr auto", gap: "0.75rem", alignItems: "center" }}>
+                    <form action={saveTestResultAction} className="inline-form" style={{ display: "grid", gridTemplateColumns: "1.8fr 0.8fr 1fr 1.4fr 0.8fr 2fr auto", gap: "0.75rem", alignItems: "center" }}>
                       <div>{student.profile?.name ?? "Student"}</div>
                       <div>{student.roll_number ?? "—"}</div>
                       <div>{student.batch?.name ?? "—"}</div>

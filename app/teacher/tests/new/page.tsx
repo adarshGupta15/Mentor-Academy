@@ -15,6 +15,11 @@ export default async function TeacherNewTestPage() {
     .select("class_id, subject_id, batch_id, class:classes(name), subject:subjects(name), batch:batches(name)")
     .eq("teacher_id", teacher?.id);
 
+  async function createTestAction(formData: FormData): Promise<void> {
+    "use server";
+    await createTest(formData);
+  }
+
   return (
     <section className="manage">
       <div className="admin-hero">
@@ -23,7 +28,7 @@ export default async function TeacherNewTestPage() {
       </div>
 
       <div className="form-grid">
-        <form action={createTest} className="form-grid">
+        <form action={createTestAction} className="form-grid">
           <label>Title<input name="title" required /></label>
           <label>Description<textarea name="description" rows={4} /></label>
           <label>Class

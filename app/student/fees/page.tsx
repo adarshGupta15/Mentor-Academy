@@ -12,6 +12,12 @@ type Assignment = {
   fee_structure: { name: string } | null;
 };
 
+function firstFeeStructure(
+  relation: { name: string } | { name: string }[] | null | undefined,
+): { name: string } | null {
+  return (Array.isArray(relation) ? relation[0] : relation) ?? null;
+}
+
 type Payment = {
   id: string;
   fee_assignment_id: string;
@@ -43,7 +49,10 @@ export default async function StudentFeesPage() {
     supabase.from("fee_payments").select("id, fee_assignment_id, amount, payment_method, paid_at, receipt_number, transaction_reference").eq("payment_status", "SUCCESS").order("paid_at", { ascending: false }),
   ]);
 
-  const assignmentRows = (assignments ?? []) as Assignment[];
+  const assignmentRows: Assignment[] = (assignments ?? []).map((assignment) => ({
+    ...assignment,
+    fee_structure: firstFeeStructure(assignment.fee_structure),
+  }));
   const paymentRows = (payments ?? []) as Payment[];
   const paidByAssignment = paymentRows.reduce<Record<string, number>>((totals, payment) => {
     totals[payment.fee_assignment_id] = (totals[payment.fee_assignment_id] ?? 0) + Number(payment.amount);

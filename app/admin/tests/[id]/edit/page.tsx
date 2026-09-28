@@ -16,6 +16,11 @@ export default async function EditTestPage({ params }: { params: Promise<{ id: s
 
   if (error || !test) notFound();
 
+  async function updateTestFormAction(formData: FormData): Promise<void> {
+    "use server";
+    await updateTest(formData);
+  }
+
   const [{ data: classes }, { data: subjects }, { data: batches }] = await Promise.all([
     supabase.from("classes").select("id, name").eq("is_active", true).order("name"),
     supabase.from("subjects").select("id, name").eq("is_active", true).order("name"),
@@ -30,7 +35,7 @@ export default async function EditTestPage({ params }: { params: Promise<{ id: s
       </div>
 
       <div className="form-grid">
-        <form action={updateTest} className="form-grid">
+        <form action={updateTestFormAction} className="form-grid">
           <input type="hidden" name="testId" value={test.id} />
           <label>Title<input name="title" defaultValue={test.title} required /></label>
           <label>Description<textarea name="description" rows={4} defaultValue={test.description ?? ""} /></label>

@@ -39,7 +39,7 @@ export function SubjectForm() {
           <span>{success}</span>
         </div>
       )}
-      <form action={createSubject} onSubmit={handleSubmit} className="form-grid">
+      <form action={handleSubmit} className="form-grid">
         <label>
           Subject Name
           <input

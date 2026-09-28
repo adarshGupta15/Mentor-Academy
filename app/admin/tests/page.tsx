@@ -44,6 +44,21 @@ export default async function AdminTestsPage() {
     archived: tests?.filter((item) => item.status === "ARCHIVED").length ?? 0,
   };
 
+  async function publishTestAction(formData: FormData): Promise<void> {
+    "use server";
+    await publishTest(formData);
+  }
+
+  async function archiveTestAction(formData: FormData): Promise<void> {
+    "use server";
+    await archiveTest(formData);
+  }
+
+  async function deleteTestAction(formData: FormData): Promise<void> {
+    "use server";
+    await deleteTest(formData);
+  }
+
   return (
     <section className="manage">
       <div className="admin-hero">
@@ -100,18 +115,18 @@ export default async function AdminTestsPage() {
                     <Link href={`/admin/tests/${test.id}/results`} className="button quiet">Results</Link>
                     <Link href={`/admin/tests/${test.id}/edit`} className="button quiet">Edit</Link>
                     {test.status !== "PUBLISHED" && (
-                      <form action={publishTest}>
+                      <form action={publishTestAction}>
                         <input type="hidden" name="testId" value={test.id} />
                         <button type="submit" className="button primary">Publish</button>
                       </form>
                     )}
                     {test.status !== "ARCHIVED" && (
-                      <form action={archiveTest}>
+                      <form action={archiveTestAction}>
                         <input type="hidden" name="testId" value={test.id} />
                         <button type="submit" className="button quiet">Archive</button>
                       </form>
                     )}
-                    <form action={deleteTest}>
+                    <form action={deleteTestAction}>
                       <input type="hidden" name="testId" value={test.id} />
                       <button type="submit" className="button danger">Delete</button>
                     </form>

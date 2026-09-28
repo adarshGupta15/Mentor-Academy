@@ -1,14 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { BatchForm } from "./batch-form";
 
-type Batch = {
-  id: string;
-  name: string;
-  is_active: boolean;
-  created_at: string;
-  class: { name: string } | null;
-};
-
 type ClassOption = {
   id: string;
   name: string;
@@ -27,17 +19,21 @@ export default async function BatchesPage() {
   const [batchResult, classResult] = await Promise.all([
     supabase
       .from("batches")
-      .select("id, name, is_active, created_at, class:classes(name)")
+      .select("id, name, is_active, created_at, class_id")
       .order("created_at", { ascending: false }),
     supabase
       .from("classes")
-      .select("id, name")
-      .eq("is_active", true)
+      .select("id, name, is_active")
       .order("name"),
   ]);
 
-  const batches = (batchResult.data ?? []) as Batch[];
-  const classes = (classResult.data ?? []) as ClassOption[];
+  const batches = batchResult.data ?? [];
+  const classRows = classResult.data ?? [];
+  const classes: ClassOption[] = classRows
+    .filter((item) => item.is_active)
+    .map(({ id, name }) => ({ id, name }));
+  const classNames = new Map<string, string>();
+  for (const item of classRows) classNames.set(item.id, item.name);
   const loadError = batchResult.error || classResult.error;
 
   return (
@@ -69,7 +65,7 @@ export default async function BatchesPage() {
             {batches.map((batch) => (
               <tr key={batch.id}>
                 <td><b>{batch.name}</b></td>
-                <td>{batch.class?.name ? `Class ${batch.class.name}` : "—"}</td>
+                <td>{classNames.get(batch.class_id) ? `Class ${classNames.get(batch.class_id)}` : "—"}</td>
                 <td>
                   <span className={`fee-badge ${batch.is_active ? "badge-success" : "badge-cancelled"}`}>
                     {batch.is_active ? "ACTIVE" : "INACTIVE"}

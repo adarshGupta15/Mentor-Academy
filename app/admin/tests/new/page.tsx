@@ -12,6 +12,11 @@ export default async function NewTestPage() {
     supabase.from("batches").select("id, name, class_id").eq("is_active", true).order("name"),
   ]);
 
+  async function createTestAction(formData: FormData): Promise<void> {
+    "use server";
+    await createTest(formData);
+  }
+
   return (
     <section className="manage">
       <div className="admin-hero">
@@ -20,7 +25,7 @@ export default async function NewTestPage() {
       </div>
 
       <div className="form-grid">
-        <form action={createTest} className="form-grid">
+        <form action={createTestAction} className="form-grid">
           <label>Title<input name="title" required /></label>
           <label>Description<textarea name="description" rows={4} /></label>
           <label>Class

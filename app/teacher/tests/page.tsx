@@ -31,6 +31,16 @@ export default async function TeacherTestsPage() {
     .eq("created_by_teacher_id", teacher.id)
     .order("created_at", { ascending: false });
 
+  async function publishTestAction(formData: FormData): Promise<void> {
+    "use server";
+    await publishTest(formData);
+  }
+
+  async function archiveTestAction(formData: FormData): Promise<void> {
+    "use server";
+    await archiveTest(formData);
+  }
+
   return (
     <section className="manage">
       <div className="admin-hero">
@@ -74,10 +84,10 @@ export default async function TeacherTestsPage() {
                     <Link href={`/teacher/tests/${test.id}/results`} className="button quiet">Results</Link>
                     <Link href={`/teacher/tests/${test.id}/edit`} className="button quiet">Edit</Link>
                     {test.status !== "PUBLISHED" && (
-                      <form action={publishTest}><input type="hidden" name="testId" value={test.id} /><button type="submit" className="button primary">Publish</button></form>
+                      <form action={publishTestAction}><input type="hidden" name="testId" value={test.id} /><button type="submit" className="button primary">Publish</button></form>
                     )}
                     {test.status !== "ARCHIVED" && (
-                      <form action={archiveTest}><input type="hidden" name="testId" value={test.id} /><button type="submit" className="button quiet">Archive</button></form>
+                      <form action={archiveTestAction}><input type="hidden" name="testId" value={test.id} /><button type="submit" className="button quiet">Archive</button></form>
                     )}
                   </div>
                 </td>

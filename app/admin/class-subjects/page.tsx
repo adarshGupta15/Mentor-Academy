@@ -10,12 +10,16 @@ export default async function ClassSubjectsPage() {
   const [classesResult, subjectsResult, assignmentsResult] = await Promise.all([
     supabase.from("classes").select("id, name").order("name"),
     supabase.from("subjects").select("id, name, is_active").order("name"),
-    supabase.from("class_subjects").select("class_id, subject_id, subject:subjects(id, name, is_active)").order("created_at"),
+    supabase.from("class_subjects").select("class_id, subject_id").order("created_at"),
   ]);
 
   const classes = (classesResult.data ?? []) as ClassOption[];
   const subjects = (subjectsResult.data ?? []) as SubjectOption[];
-  const assignments = (assignmentsResult.data ?? []) as Assignment[];
+  const assignments: Assignment[] = (assignmentsResult.data ?? []).map(({ class_id, subject_id }) => ({
+    class_id,
+    subject_id,
+    subject: subjects.find((item) => item.id === subject_id) ?? null,
+  }));
   const loadError = classesResult.error || subjectsResult.error || assignmentsResult.error;
 
   return (
