@@ -15,6 +15,15 @@ export default async function TeacherNewTestPage() {
     .select("class_id, subject_id, batch_id, class:classes(name), subject:subjects(name), batch:batches(name)")
     .eq("teacher_id", teacher?.id);
 
+  const validAssignments = [...new Map((assignments ?? []).map((assignment: any) => [
+    `${assignment.class_id}:${assignment.subject_id}:${assignment.batch_id ?? "all"}`,
+    assignment,
+  ])).values()];
+
+  const distinctClasses = [...new Map(validAssignments.map((assignment: any) => [assignment.class_id, { id: assignment.class_id, name: assignment.class?.name ?? "Class" }])).values()];
+  const distinctSubjects = [...new Map(validAssignments.map((assignment: any) => [assignment.subject_id, { id: assignment.subject_id, name: assignment.subject?.name ?? "Subject" }])).values()];
+  const distinctBatches = [...new Map(validAssignments.filter((assignment: any) => assignment.batch_id).map((assignment: any) => [assignment.batch_id, { id: assignment.batch_id, name: assignment.batch?.name ?? "Batch" }])).values()];
+
   async function createTestAction(formData: FormData): Promise<void> {
     "use server";
     await createTest(formData);
@@ -34,24 +43,24 @@ export default async function TeacherNewTestPage() {
           <label>Class
             <select name="classId" required>
               <option value="">Select class</option>
-              {(assignments ?? []).map((assignment: any) => (
-                <option key={`${assignment.class_id}-${assignment.subject_id}-${assignment.batch_id ?? "all"}`} value={assignment.class_id}>Class {assignment.class?.name}</option>
+              {distinctClasses.map((assignment: any) => (
+                <option key={assignment.id} value={assignment.id}>Class {assignment.name}</option>
               ))}
             </select>
           </label>
           <label>Subject
             <select name="subjectId" required>
               <option value="">Select subject</option>
-              {(assignments ?? []).map((assignment: any) => (
-                <option key={`${assignment.subject_id}-${assignment.class_id}`} value={assignment.subject_id}>{assignment.subject?.name}</option>
+              {distinctSubjects.map((assignment: any) => (
+                <option key={assignment.id} value={assignment.id}>{assignment.name}</option>
               ))}
             </select>
           </label>
           <label>Batch
             <select name="batchId">
               <option value="">All batches</option>
-              {(assignments ?? []).map((assignment: any) => assignment.batch_id && (
-                <option key={`${assignment.batch_id}-${assignment.subject_id}`} value={assignment.batch_id}>{assignment.batch?.name}</option>
+              {distinctBatches.map((assignment: any) => (
+                <option key={assignment.id} value={assignment.id}>{assignment.name}</option>
               ))}
             </select>
           </label>

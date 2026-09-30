@@ -1,19 +1,21 @@
 import Link from "next/link";
+import { getTeacherPortalData, matchesTeacherAssignment } from "@/lib/teacher/data";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/server";
 
 export default async function TeacherMarksPage() {
   await requireRole("TEACHER");
+  const { assignments, error } = await getTeacherPortalData();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user?.id).single();
-  const { data: teacher } = await supabase.from("teachers").select("id").eq("profile_id", profile?.id).single();
 
   const { data: tests } = await supabase
     .from("tests")
     .select(`
       id,
       title,
+      class_id,
+      subject_id,
+      batch_id,
       class:classes(name),
       subject:subjects(name),
       batch:batches(name),
@@ -21,8 +23,9 @@ export default async function TeacherMarksPage() {
       test_date,
       status
     `)
-    .eq("created_by_teacher_id", teacher?.id)
     .order("test_date", { ascending: false });
+
+  const visibleTests = (tests ?? []).filter((test: any) => matchesTeacherAssignment({ class_id: test.class_id, subject_id: test.subject_id, batch_id: test.batch_id }, assignments));
 
   return (
     <section className="manage">
@@ -30,6 +33,7 @@ export default async function TeacherMarksPage() {
         <span>MARK ENTRY</span>
         <h2>Teacher Marks</h2>
       </div>
+      {error && <div className="alert-box alert-error" role="alert">{error}</div>}
       <div className="quick-actions">
         <Link href="/teacher/tests" className="button quiet">Manage Tests</Link>
       </div>
@@ -47,7 +51,7 @@ export default async function TeacherMarksPage() {
             </tr>
           </thead>
           <tbody>
-            {(tests ?? []).map((test: any) => (
+            {visibleTests.map((test: any) => (
               <tr key={test.id}>
                 <td>{test.title}</td>
                 <td>{test.class?.name ? `Class ${test.class.name}` : "—"}</td>
@@ -58,7 +62,7 @@ export default async function TeacherMarksPage() {
                 <td><Link href={`/teacher/tests/${test.id}/results`} className="button primary">Entry</Link></td>
               </tr>
             ))}
-            {!tests?.length && <tr><td colSpan={7} className="empty-state">No tests available for marks entry.</td></tr>}
+            {!visibleTests.length && <tr><td colSpan={7} className="empty-state">No tests available for marks entry in your scope.</td></tr>}
           </tbody>
         </table>
       </div>

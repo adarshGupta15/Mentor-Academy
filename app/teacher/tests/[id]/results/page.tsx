@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/server";
+import { getTeacherPortalData, getTeacherStudents } from "@/lib/teacher/data";
 import { saveTestResult } from "@/lib/tests/actions";
 
 const percentage = (obtained: number, max: number) => {
@@ -24,18 +25,10 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
 
   if (testError || !test) notFound();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user?.id).single();
-  const { data: teacher } = await supabase.from("teachers").select("id").eq("profile_id", profile?.id).single();
-
-  const { data: assignments } = await supabase
-    .from("teacher_assignments")
-    .select("class_id, subject_id, batch_id")
-    .eq("teacher_id", teacher?.id)
-    .eq("class_id", test.class_id)
-    .eq("subject_id", test.subject_id);
-
-  const allowed = assignments?.some((item: any) => item.batch_id === test.batch_id || (item.batch_id === null && test.batch_id === null) || (item.batch_id === null && test.batch_id !== null)) ?? false;
+  const { assignments } = await getTeacherPortalData();
+  const allowed = assignments.some((item) => item.class_id === test.class_id
+    && item.subject_id === test.subject_id
+    && (test.batch_id === null ? item.batch_id === null : item.batch_id === null || item.batch_id === test.batch_id));
 
   if (!allowed) notFound();
 
@@ -44,13 +37,8 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
     await saveTestResult(formData);
   }
 
-  const { data: students } = await supabase
-    .from("students")
-    .select("id, student_id, roll_number, profile:profiles(name), class:classes(name), batch:batches(name)")
-    .eq("class_id", test.class_id)
-    .order("student_id");
-
-  const eligibleStudents = (students ?? []).filter((student: any) => !test.batch_id || student.batch_id === test.batch_id);
+  const { students, error: studentsError } = await getTeacherStudents(supabase);
+  const eligibleStudents = students.filter((student) => student.class_id === test.class_id && (!test.batch_id || student.batch_id === test.batch_id));
   const { data: results } = await supabase.from("test_results").select("student_id, obtained_marks, teacher_remarks").eq("test_id", id);
   const resultMap = new Map((results ?? []).map((result: any) => [result.student_id, result]));
 
@@ -60,6 +48,7 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
         <span>TEACHER RESULTS</span>
         <h2>{test.title}</h2>
       </div>
+      {studentsError && <div className="alert-box alert-error" role="alert">Student roster is unavailable. Apply the reviewed teacher-scope migration before entering marks.</div>}
       <div className="data-table">
         <table>
           <thead>
@@ -74,15 +63,15 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
             </tr>
           </thead>
           <tbody>
-            {(eligibleStudents ?? []).map((student: any) => {
+            {eligibleStudents.map((student) => {
               const result = resultMap.get(student.id);
               return (
                 <tr key={student.id}>
                   <td colSpan={7}>
                     <form action={saveTestResultAction} className="inline-form" style={{ display: "grid", gridTemplateColumns: "1.8fr 0.8fr 1fr 1.4fr 0.8fr 2fr auto", gap: "0.75rem", alignItems: "center" }}>
-                      <div>{student.profile?.name ?? "Student"}</div>
+                      <div>{student.name}</div>
                       <div>{student.roll_number ?? "—"}</div>
-                      <div>{student.batch?.name ?? "—"}</div>
+                      <div>{student.batch_name ?? "—"}</div>
                       <div>
                         <input type="hidden" name="testId" value={test.id} />
                         <input type="hidden" name="studentId" value={student.id} />

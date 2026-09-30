@@ -94,6 +94,22 @@ async function getTeacherIdForProfile(supabase: Awaited<ReturnType<typeof create
   return data.id as string;
 }
 
+async function ensureTeacherOwnsTest(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  testId: string,
+  teacherId: string,
+) {
+  const { data: test, error } = await supabase
+    .from("tests")
+    .select("created_by_teacher_id")
+    .eq("id", testId)
+    .maybeSingle();
+
+  if (error || !test || test.created_by_teacher_id !== teacherId) {
+    throw new Error("Only the teacher who created this test may change it.");
+  }
+}
+
 function getTestStatusValue(raw: string | null) {
   if (!raw) return "DRAFT";
   return raw === "PUBLISHED" || raw === "DRAFT" || raw === "ARCHIVED" ? raw : "DRAFT";
@@ -162,6 +178,7 @@ export async function updateTest(form: FormData) {
     await ensureValidTestSetup(supabase, classId, subjectId, batchId);
   } else if (profile.role === "TEACHER") {
     const teacherId = await getTeacherIdForProfile(supabase, profile.id);
+    await ensureTeacherOwnsTest(supabase, id, teacherId);
     await ensureTeacherAssignment(supabase, teacherId, classId, subjectId, batchId);
     await ensureValidTestSetup(supabase, classId, subjectId, batchId);
   } else {
@@ -203,6 +220,7 @@ export async function publishTest(form: FormData) {
     const teacherId = await getTeacherIdForProfile(supabase, profile.id);
     const { data: test } = await supabase.from("tests").select("class_id,subject_id,batch_id").eq("id", id).maybeSingle();
     if (!test) throw new Error("Test not found.");
+    await ensureTeacherOwnsTest(supabase, id, teacherId);
     await ensureTeacherAssignment(supabase, teacherId, test.class_id, test.subject_id, test.batch_id);
     const { error } = await supabase.from("tests").update({ status: "PUBLISHED" }).eq("id", id);
     if (error) throw new Error(error.message);
@@ -227,6 +245,7 @@ export async function archiveTest(form: FormData) {
     const teacherId = await getTeacherIdForProfile(supabase, profile.id);
     const { data: test } = await supabase.from("tests").select("class_id,subject_id,batch_id").eq("id", id).maybeSingle();
     if (!test) throw new Error("Test not found.");
+    await ensureTeacherOwnsTest(supabase, id, teacherId);
     await ensureTeacherAssignment(supabase, teacherId, test.class_id, test.subject_id, test.batch_id);
     const { error } = await supabase.from("tests").update({ status: "ARCHIVED" }).eq("id", id);
     if (error) throw new Error(error.message);
@@ -253,6 +272,7 @@ export async function deleteTest(form: FormData) {
     const teacherId = await getTeacherIdForProfile(supabase, profile.id);
     const { data: test } = await supabase.from("tests").select("class_id,subject_id,batch_id").eq("id", id).maybeSingle();
     if (!test) throw new Error("Test not found.");
+    await ensureTeacherOwnsTest(supabase, id, teacherId);
     await ensureTeacherAssignment(supabase, teacherId, test.class_id, test.subject_id, test.batch_id);
     const { data: results } = await supabase.from("test_results").select("id").eq("test_id", id).limit(1);
     if ((results ?? []).length) throw new Error("Delete the test results before removing this test.");
@@ -292,15 +312,8 @@ export async function saveTestResult(form: FormData) {
     await ensureTeacherAssignment(supabase, teacherId, test.class_id, test.subject_id, test.batch_id);
   }
 
-  const { data: student } = await supabase
-    .from("students")
-    .select("id, class_id, batch_id")
-    .eq("id", studentId)
-    .maybeSingle();
-
-  if (!student) throw new Error("Student not found.");
-
   const eligible = await supabase.rpc("student_is_eligible_for_test", { p_test_id: testId, p_student_id: studentId });
+  if (eligible.error) throw new Error(eligible.error.message);
   if (!eligible.data) throw new Error("This student is not eligible for the selected test.");
 
   if (obtainedMarks > test.max_marks) {
